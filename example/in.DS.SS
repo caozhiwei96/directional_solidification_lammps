@@ -1,0 +1,104 @@
+#-------------	Initialization -------------#
+
+units		metal
+boundary	p p p
+
+atom_style	atomic
+read_data	SS304L.lmp  # initial simulation box
+
+variable	T_equi equal 2700.0  # Temperature of equilibrium stage. Should be high enough to ensure a fully melted liquid phase. 
+variable	T_low equal 1500.0  # Temperature of low temperature region. 
+variable	T_high equal 1800.0  # Temperature of high temperature region. 
+
+variable	e_leng equal 300.0  # edge length of cubic domain
+variable	b_ratio equal 0.1  # boundary ratio
+
+variable 	ts_equi equal 0.003  # timestep of equilibrium stage
+variable	step_equi equal 50000  # step of equilibrium stage
+variable	ts_DS equal 0.001  # timestep of directional solidification
+variable	step_DS equal 5000000  # step of directional solidification
+
+pair_style	eam/alloy
+pair_coeff	* * FeNiCr.eam.alloy Fe Ni Cr  # !!! CHECK lmp file for atom ID !!!
+
+neighbor	2.0 bin
+
+shell		mkdir output
+
+#-------------	Equilibration -------------#
+
+minimize	1.0e-5 1.0e-5 10000 100000
+reset_timestep	0
+
+velocity	all create ${T_equi} 6655 dist gaussian
+
+compute	1 all ke
+compute	2 all temp
+compute	3 all pe
+variable	Dens equal density
+fix 		DensAve all ave/time 2 10 100 v_Dens file ./output/density.txt
+
+thermo		100
+thermo_style	custom step temp pe ke etotal density f_DensAve
+thermo_modify	flush yes
+
+fix 		1 all npt temp ${T_equi} ${T_equi} 0.03 iso 0 0 0.3 drag 1.0
+
+dump		1 all atom 1000 ./output/dump.relax
+
+timestep	${ts_equi}
+run		${step_equi}
+
+
+
+#-------------	Solidification -------------#
+
+undump		1
+unfix		1
+
+change_box	all boundary s p p
+
+variable	b_leng equal (${e_leng}*${b_ratio}) # boundary length
+variable 	leng1 equal (${e_leng}*${b_ratio})
+variable	leng2 equal (2*${e_leng}/5)
+variable	leng3 equal (3*${e_leng}/5)
+variable	leng4 equal (${e_leng}*(1-${b_ratio}))
+
+region		lotemp block INF ${leng1} INF INF INF INF units box
+region		tempgrad1 block ${leng1} ${leng2} INF INF INF INF units box
+region		tempgrad2 block ${leng2} ${leng3} INF INF INF INF units box
+region		tempgrad3 block ${leng3} ${leng4} INF INF INF INF units box
+region		hitemp block ${leng4} INF INF INF INF INF units box
+
+group		lotemp region lotemp
+group		tempgrad1 region tempgrad1
+group		tempgrad2 region tempgrad2
+group 		tempgrad3 region tempgrad3
+group		hitemp region hitemp
+
+compute	temp_1 all temp/region lotemp
+compute	temp_2 all temp/region tempgrad1
+compute 	temp_3 all temp/region tempgrad2
+compute 	temp_4 all temp/region tempgrad3
+compute	temp_5 all temp/region hitemp
+
+#fix 		temp_1 all ave/time 5 5 1000 c_temp_1 file ./output/temp_1.txt
+#fix 		temp_2 all ave/time 5 5 1000 c_temp_2 file ./output/temp_2.txt
+#fix 		temp_3 all ave/time 5 5 1000 c_temp_3 file ./output/temp_3.txt
+#fix 		temp_4 all ave/time 5 5 1000 c_temp_4 file ./output/temp_4.txt
+#fix 		temp_5 all ave/time 5 5 1000 c_temp_5 file ./output/temp_5.txt
+
+fix 		temp_regions all ave/time 5 5 1000 c_temp_1 c_temp_2 c_temp_3 c_temp_4 c_temp_5 file ./output/temperature.txt
+
+thermo		100
+thermo_style	custom step temp pe ke etotal density c_temp_1 c_temp_2 c_temp_3 c_temp_4 c_temp_5
+thermo_modify 	flush yes
+
+dump		2 all custom 10000 ./output/dump.DS id type x y z 
+
+fix		1 all nve
+fix 		2 lotemp langevin ${T_low} ${T_low} 0.1 12597
+fix 		3 hitemp langevin ${T_high} ${T_high} 0.1 36145
+
+timestep	${ts_DS}
+run		${step_DS}
