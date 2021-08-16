@@ -2,9 +2,13 @@
 
 In this repository, you can find the LAMMPS codes, accompanying the corresponding python codes for plotting, to study the directional solidification of alloys during additive manufacturing using molecular dynamics. 
 
-This is an important part of Zhiwei Cao's Master's Thesis, *Directional Solidification of Alloys for Additive Manufacturing*, at Professorship Multiscale Modeling of Fluid Materials at the Technical University of Munich. 
+This is an important part of Zhiwei Cao's Master's Thesis, *Directional Solidification of Alloys for Additive Manufacturing*, under the supervision of Prof. Dr. Julija Zavadlav at Professorship Multiscale Modeling of Fluid Materials at the Technical University of Munich. 
+
+The LAMMPS input file template is `./src/in.DS`. 
 
 An example of 304L stainless steel can be found in `./example`. 
+
+The plot tool can be found in `./src/plot_tool`.
 
 ## Install
 
@@ -25,11 +29,15 @@ This project uses the following software and packages. Please make sure you inst
 
     ```
     atomsk --create fcc 3.56 Fe -duplicate 84 84 84 Fe_fcc.xsf
-
+    ```
+    ```
     atomsk Fe_fcc.xsf -select random 21.0% Fe -substitute Fe Cr FeCr21.cfg
-
+    ```
+    ```
     atomsk FeCr21.cfg -select random 11.40% Fe -substitute Fe Ni SS304L.cfg lmp
     ```
+    
+    This simulation box is very large, so it is not included in this repository. 
 
 2. Choose EAM or MEAM potential. 
 
@@ -59,6 +67,8 @@ This project uses the following software and packages. Please make sure you inst
     
     Then check other input parameters and press Submit button. 
     
-    Next press Density-t, Composition-t, and Temperature-t buttons for corresponding plots. Examples of these plots can be found in `./example/plot`. 
+    Next press Density-t, Composition-t, and Temperature-t buttons for corresponding plots. 
+    
+    Examples of these plots can be found in `./example/plot`. 
     
     
